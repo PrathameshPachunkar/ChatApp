@@ -1,16 +1,17 @@
-import 'package:chat_app/models/userModel.dart';
+import 'package:chat_app/models/UserModel.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FirebaseHelper {
-  static Future<userModel?> fetchuserdata(String uid) async {
-    userModel? model;
-    DocumentSnapshot documentSnapshot =
+  static Future<UserModel?> getUserModelById(String uid) async {
+    UserModel? userModel;
+
+    DocumentSnapshot docSnap =
         await FirebaseFirestore.instance.collection("users").doc(uid).get();
 
-    if (documentSnapshot != null) {
-      model =
-          userModel.fromMap(documentSnapshot.data() as Map<String, dynamic>);
+    if (docSnap.data() != null) {
+      userModel = UserModel.fromMap(docSnap.data() as Map<String, dynamic>);
     }
-    return model;
+
+    return userModel;
   }
 }

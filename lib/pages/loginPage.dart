@@ -1,51 +1,69 @@
-import 'dart:developer';
-
-import 'package:chat_app/models/userModel.dart';
-import 'package:chat_app/pages/signupPage.dart';
+import 'package:chat_app/models/UIHelper.dart';
+import 'package:chat_app/pages/HomePage.dart';
+import 'package:chat_app/pages/SignUpPage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:chat_app/models/UserModel.dart';
 
-class loginPage extends StatefulWidget {
-  static const String routeName = "loginPage";
-  const loginPage({super.key});
+class LoginPage extends StatefulWidget {
+  const LoginPage({Key? key}) : super(key: key);
 
   @override
-  State<loginPage> createState() => _loginPageState();
+  _LoginPageState createState() => _LoginPageState();
 }
 
-class _loginPageState extends State<loginPage> {
-  TextEditingController Email = TextEditingController();
-  TextEditingController Password = TextEditingController();
+class _LoginPageState extends State<LoginPage> {
+  TextEditingController emailController = TextEditingController();
+  TextEditingController passwordController = TextEditingController();
 
-  void valucheck() {
-    String email = Email.text.trim();
-    String password = Password.text.trim();
+  void checkValues() {
+    String email = emailController.text.trim();
+    String password = passwordController.text.trim();
+
     if (email == "" || password == "") {
-      print("Enter all fields");
+      UIHelper.showAlertDialog(
+          context, "Incomplete Data", "Please fill all the fields");
     } else {
-      login(email, password);
+      logIn(email, password);
     }
   }
 
-  void login(String email, String password) async {
-    UserCredential? Credential;
-    try {
-      Credential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email, password: password);
-    } on FirebaseAuthException catch (err) {
-      print(err.code.toString());
-    }
-    if (Credential != null) {
-      String uid = Credential.user!.uid;
-      DocumentSnapshot userData =
-          await FirebaseFirestore.instance.collection("users").doc(uid).get();
-      userModel user =
-          userModel.fromMap(userData.data() as Map<String, dynamic>);
+  void logIn(String email, String password) async {
+    UserCredential? credential;
 
-      log("login Succefull");
+    UIHelper.showLoadingDialog(context, "Logging In..");
+
+    try {
+      credential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+    } on FirebaseAuthException catch (ex) {
+      // Close the loading dialog
+      Navigator.pop(context);
+
+      // Show Alert Dialog
+      UIHelper.showAlertDialog(
+          context, "An error occured", ex.message.toString());
+    }
+
+    if (credential != null) {
+      String uid = credential.user!.uid;
+
+      DocumentSnapshot userData =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      UserModel userModel =
+          UserModel.fromMap(userData.data() as Map<String, dynamic>);
+
+      print("Log In Successful!");
+      Navigator.popUntil(context, (route) => route.isFirst);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) {
+          return HomePage(
+              userModel: userModel, firebaseUser: credential!.user!);
+        }),
+      );
     }
   }
 
@@ -53,60 +71,76 @@ class _loginPageState extends State<loginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: 40,
+          ),
           child: Center(
-        child: SingleChildScrollView(
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 40),
-            child: Column(children: [
-              Text(
-                "Chat App",
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.secondary,
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                ),
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  Text(
+                    "Chat App",
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.secondary,
+                        fontSize: 45,
+                        fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  TextField(
+                    controller: emailController,
+                    decoration: InputDecoration(labelText: "Email Address"),
+                  ),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(labelText: "Password"),
+                  ),
+                  SizedBox(
+                    height: 20,
+                  ),
+                  CupertinoButton(
+                    onPressed: () {
+                      checkValues();
+                    },
+                    color: Theme.of(context).colorScheme.secondary,
+                    child: Text("Log In"),
+                  ),
+                ],
               ),
-              TextField(
-                  controller: Email,
-                  decoration: InputDecoration(labelText: "Email Address")),
-              SizedBox(
-                height: 20,
-              ),
-              TextField(
-                controller: Password,
-                obscureText: true,
-                decoration: InputDecoration(labelText: "Password"),
-              ),
-              SizedBox(
-                height: 20,
-              ),
-              CupertinoButton(
-                  color: Colors.blue,
-                  child: Text("Log In"),
-                  onPressed: () {
-                    valucheck();
-                  }),
-            ]),
+            ),
           ),
         ),
-      )),
+      ),
       bottomNavigationBar: Container(
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text("Don't have a account?"),
-          TextButton(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "Don't have an account?",
+              style: TextStyle(fontSize: 16),
+            ),
+            CupertinoButton(
               onPressed: () {
                 Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => signupPage(),
-                    ));
+                  context,
+                  MaterialPageRoute(builder: (context) {
+                    return SignUpPage();
+                  }),
+                );
               },
               child: Text(
                 "Sign Up",
-                style:
-                    TextStyle(color: Theme.of(context).colorScheme.secondary),
-              ))
-        ]),
+                style: TextStyle(fontSize: 16),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
